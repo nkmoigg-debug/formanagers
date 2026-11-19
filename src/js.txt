@@ -1,0 +1,75 @@
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const app=$('#app'),stage=$('#stage'),fx=$('#fx'),slides=$$('.sl'),N=slides.length,dots=$$('.nav a');
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+let cur=0,busy=false,forced=null,moved=false;
+const isY=()=>app.classList.contains('m');
+function setMode(){const w=innerWidth,h=innerHeight;const auto=(w/h<1.05||w<700)?'m':'land';const m=forced||auto;
+ app.classList.toggle('m',m==='m');app.classList.toggle('land',m!=='m');
+ document.body.classList.toggle('frame',m==='m'&&w/h>.8);
+ $$('.sw button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+ $('.sw').style.display=w<700?'none':'flex'}
+function fit(){slides.forEach(s=>{const n=$('.in',s);n.style.transform='';const cs=getComputedStyle(s),av=s.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom),h=n.offsetHeight;if(h>av+1)n.style.transform='scale('+(av/h).toFixed(3)+')'})}
+/* ---- «живой» показ: набор с клавиатуры и подсветка шагов (токен отмены у каждого слайда свой) ---- */
+const stop=sec=>{sec._tk=(sec._tk||0)+1;return sec._tk};
+function setTab(i){$$('#sD .tabsx button').forEach((b,k)=>b.classList.toggle('on',k===i));$$('#sD .sstack img').forEach((m,k)=>m.classList.toggle('on',k===i))}
+function setActive(sec,i){
+ $$('.leg li',sec).forEach((l,k)=>l.classList.toggle('act',k===i));
+ $$('.pin',sec).forEach(p=>p.classList.toggle('hot',+p.dataset.i===i));
+ const l=$$('.leg li',sec)[i],cap=$('.cap',sec);
+ if(cap)cap.innerHTML=l?'<b>'+l.querySelector('h4').innerHTML+'</b><p>'+l.querySelector('p').innerHTML+'</p>':'';
+ if(l&&l.dataset.tab!=null)setTab(+l.dataset.tab)}
+function resetTour(sec){stop(sec);$$('.ty',sec).forEach(e=>{e.textContent='';e.classList.remove('on')});
+ const c=$('.ty.ctr',sec);if(c)c.textContent='0/452';
+ $$('.leg li',sec).forEach(l=>l.classList.remove('act'));$$('.pin',sec).forEach(p=>p.classList.remove('hot'));
+ const cap=$('.cap',sec);if(cap)cap.innerHTML='';if(sec.id==='sD')setTab(0)}
+async function typeInto(sec,el,tok){const t=el.dataset.t||'',sp=+(el.dataset.s||55),ctr=el.dataset.ctr?document.getElementById(el.dataset.ctr):null;
+ el.classList.add('on');el.textContent='';
+ for(let k=1;k<=t.length;k++){if(tok!==sec._tk){el.classList.remove('on');return false}el.textContent=t.slice(0,k);if(ctr)ctr.textContent=k+'/452';await wait(sp+(Math.random()*sp*.5))}
+ el.classList.remove('on');return true}
+async function runTour(sec){resetTour(sec);const tok=stop(sec);
+ const lis=$$('.leg li',sec);await wait(900);
+ for(let i=0;i<lis.length;i++){if(tok!==sec._tk)return;setActive(sec,i);
+  for(const el of $$('.ty[data-b="'+i+'"]',sec)){if(tok!==sec._tk)return;await wait(250);if(!await typeInto(sec,el,tok))return}
+  const dwell=Math.min(7500,1100+lis[i].textContent.length*30);const t0=Date.now();
+  while(Date.now()-t0<dwell){if(tok!==sec._tk)return;await wait(120)}}
+ if(tok===sec._tk)setActive(sec,0)}
+function fillTo(sec,i){$$('.ty[data-b]',sec).forEach(e=>{if(e.classList.contains('ctr'))return;const b=+e.dataset.b;e.classList.remove('on');e.textContent=b<=i?(e.dataset.t||''):''});
+ const c=$('.ty.ctr',sec);if(c){const d=$('.ty[data-ctr]',sec);c.textContent=(d&&+d.dataset.b<=i?d.dataset.t.length:0)+'/452'}}
+function manual(sec,i){stop(sec);fillTo(sec,i);setActive(sec,i)}
+$$('.sl').forEach(sec=>{$$('.leg li',sec).forEach((l,i)=>l.addEventListener('click',()=>manual(sec,i)));$$('.pin',sec).forEach(p=>p.addEventListener('click',()=>manual(sec,+p.dataset.i)))});
+try{$$('#sD .tabsx button').forEach((b,k)=>b.addEventListener('click',()=>{stop($('#sD'));setTab(k)}))}catch(e){}
+const TOUR={sA:1,sB:1,sC:1,sD:1};
+const ACT={sA:on=>on?runTour($('#sA')):resetTour($('#sA')),sB:on=>on?runTour($('#sB')):resetTour($('#sB')),sC:on=>on?runTour($('#sC')):resetTour($('#sC')),sD:on=>on?runTour($('#sD')):resetTour($('#sD'))};
+const act=(i,on)=>{try{const f=ACT[slides[i].id];f&&f(on)}catch(e){}};
+function activate(i){try{history.replaceState(null,'',location.pathname+location.search+'#'+(i+1))}catch(e){}slides[i].classList.add('on');act(i,true);app.classList.toggle('dk',slides[i].classList.contains('dark'));
+ dots.forEach((d,k)=>d.classList.toggle('on',k===i));$('#cn').textContent=String(i+1).padStart(2,'0');$('#pg').style.width=((i+1)/N*100)+'%'}
+function deactivate(i){slides[i].classList.remove('on');act(i,false)}
+function fin(a,b){slides[a].getAnimations().forEach(x=>x.cancel());slides[b].getAnimations().forEach(x=>x.cancel());deactivate(a);slides[a].classList.remove('cur','vis','top');slides[b].classList.remove('vis','top');slides[b].classList.add('cur');cur=b}
+/* переход: лёгкий кроссфейд */
+async function soft(a,b,dir){const y=isY(),na=slides[a],nb=slides[b],d=dir>0?1:-1,t=y?'translateY(':'translateX(';
+ nb.classList.add('vis','top');setTimeout(()=>activate(b),70);
+ na.animate([{opacity:1},{opacity:0}],{duration:195,easing:'ease-out',fill:'both'});
+ await nb.animate([{opacity:0,transform:t+(d*3.5)+'%)'},{opacity:1,transform:'none'}],{duration:285,easing:'cubic-bezier(.2,.8,.2,1)',fill:'both'}).finished;
+ fin(a,b)}
+async function go(n){if(busy||n<0||n>=N||n===cur)return;busy=true;if(!moved){moved=true;app.classList.add('moved')}
+ const a=cur,dir=n>a?1:-1;try{await soft(a,n,dir)}catch(e){fin(a,n)}
+ await wait(60);busy=false}
+/* ввод */
+let wl=0;addEventListener('wheel',e=>{e.preventDefault();const d=Math.abs(e.deltaY)>Math.abs(e.deltaX)?e.deltaY:e.deltaX;if(busy||Date.now()<wl||Math.abs(d)<18)return;wl=Date.now()+500;go(cur+(d>0?1:-1))},{passive:false});
+addEventListener('keydown',e=>{const k=e.key;if(e.target.tagName==='INPUT'||e.target.tagName==='BUTTON')return;if(['ArrowRight','ArrowDown','PageDown',' '].includes(k)){e.preventDefault();go(cur+1)}else if(['ArrowLeft','ArrowUp','PageUp'].includes(k)){e.preventDefault();go(cur-1)}else if(k==='Home')go(0);else if(k==='End')go(N-1)});
+let t0=null;app.addEventListener('touchstart',e=>{if(e.target.closest('.tabsx,.leg,.pin')){t0=null;return}const t=e.touches[0];t0={x:t.clientX,y:t.clientY}},{passive:true});
+app.addEventListener('touchend',e=>{if(!t0)return;const t=e.changedTouches[0],dx=t.clientX-t0.x,dy=t.clientY-t0.y;t0=null;const main=isY()?dy:(Math.abs(dx)>Math.abs(dy)?dx:dy);if(Math.abs(main)>42)go(cur+(main<0?1:-1))},{passive:true});
+let md=null;app.addEventListener('pointerdown',e=>{if(e.target.closest('.tabsx,.leg,.pin')){md=null;return}if(e.pointerType==='mouse')md={x:e.clientX,y:e.clientY}});
+app.addEventListener('pointerup',e=>{if(!md||e.pointerType!=='mouse')return;const dx=e.clientX-md.x,dy=e.clientY-md.y;md=null;const main=isY()?dy:(Math.abs(dx)>Math.abs(dy)?dx:dy);if(Math.abs(main)>80)go(cur+(main<0?1:-1))});
+dots.forEach((d,i)=>d.addEventListener('click',()=>go(i)));
+$$('.sw button').forEach(b=>b.addEventListener('click',()=>{forced=b.dataset.m;setMode();setTimeout(fit,30);rerun()}));
+function rerun(){const i=cur;deactivate(i);setTimeout(()=>{activate(i)},80)}
+addEventListener('resize',()=>{setMode();setTimeout(fit,30)});
+$$('[data-copy]').forEach(b=>b.addEventListener('click',async()=>{const v=b.dataset.copy,o=b.textContent;try{await navigator.clipboard.writeText(v);b.textContent='Скопировано ✓'}catch(e){b.textContent=v}setTimeout(()=>b.textContent=o,2200)}));
+/* персональная ссылка ?d=Название */
+try{(function(){let n='';try{n=(new URLSearchParams(location.search).get('d')||'').trim().slice(0,40)}catch(e){}
+ if(!n)return;document.title='DROPDEALER — обучение для '+n;
+ const b=$('#ebE');if(b)b.textContent=n+', поддержка дилеров'})()}catch(e){}
+setMode();slides[0].classList.add('cur');
+(document.fonts?document.fonts.ready:Promise.resolve()).then(()=>{fit();setTimeout(()=>{const h=location.hash.slice(1),k=h==='last'?N-1:(/^\d+$/.test(h)?Math.min(N,Math.max(1,+h))-1:0);
+ activate(0);if(k>0)setTimeout(()=>go(k),700)},150)});
