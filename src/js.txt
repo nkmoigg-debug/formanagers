@@ -20,22 +20,20 @@ function setActive(sec,i){
  if(l&&l.dataset.tab!=null)setTab(+l.dataset.tab)}
 function resetTour(sec){stop(sec);$$('.ty',sec).forEach(e=>{e.textContent='';e.classList.remove('on')});
  const c=$('.ty.ctr',sec);if(c)c.textContent='0/452';
- $$('.leg li',sec).forEach(l=>l.classList.remove('act'));$$('.pin',sec).forEach(p=>p.classList.remove('hot'));
+ $$('.leg li',sec).forEach(l=>l.classList.remove('act'));$$('.pin',sec).forEach(p=>p.classList.remove('hot','nxt'));
  const cap=$('.cap',sec);if(cap)cap.innerHTML='';if(sec.id==='sD')setTab(0)}
 async function typeInto(sec,el,tok){const t=el.dataset.t||'',sp=+(el.dataset.s||55),ctr=el.dataset.ctr?document.getElementById(el.dataset.ctr):null;
  el.classList.add('on');el.textContent='';
  for(let k=1;k<=t.length;k++){if(tok!==sec._tk){el.classList.remove('on');return false}el.textContent=t.slice(0,k);if(ctr)ctr.textContent=k+'/452';await wait(sp+(Math.random()*sp*.5))}
  el.classList.remove('on');return true}
-async function runTour(sec){resetTour(sec);const tok=stop(sec);
- const lis=$$('.leg li',sec);await wait(900);
- for(let i=0;i<lis.length;i++){if(tok!==sec._tk)return;setActive(sec,i);
-  for(const el of $$('.ty[data-b="'+i+'"]',sec)){if(tok!==sec._tk)return;await wait(250);if(!await typeInto(sec,el,tok))return}
-  const dwell=Math.min(7500,1100+lis[i].textContent.length*30);const t0=Date.now();
-  while(Date.now()-t0<dwell){if(tok!==sec._tk)return;await wait(120)}}
- if(tok===sec._tk)setActive(sec,0)}
 function fillTo(sec,i){$$('.ty[data-b]',sec).forEach(e=>{if(e.classList.contains('ctr'))return;const b=+e.dataset.b;e.classList.remove('on');e.textContent=b<=i?(e.dataset.t||''):''});
  const c=$('.ty.ctr',sec);if(c){const d=$('.ty[data-ctr]',sec);c.textContent=(d&&+d.dataset.b<=i?d.dataset.t.length:0)+'/452'}}
-function manual(sec,i){stop(sec);fillTo(sec,i);setActive(sec,i)}
+async function goStep(sec,i){const tok=stop(sec);fillTo(sec,i-1);setActive(sec,i);
+ $$('.pin.nxt',sec).forEach(p=>p.classList.remove('nxt'));
+ for(const el of $$('.ty[data-b="'+i+'"]',sec)){if(tok!==sec._tk)return;await wait(200);if(!await typeInto(sec,el,tok))return}
+ if(tok===sec._tk){const n=$$('.pin',sec).find(p=>+p.dataset.i===i+1);if(n)n.classList.add('nxt')}}
+async function runTour(sec){resetTour(sec);const tok=stop(sec);await wait(900);if(tok!==sec._tk)return;goStep(sec,0)}
+function manual(sec,i){goStep(sec,i)}
 $$('.sl').forEach(sec=>{$$('.leg li',sec).forEach((l,i)=>l.addEventListener('click',()=>manual(sec,i)));$$('.pin',sec).forEach(p=>p.addEventListener('click',()=>manual(sec,+p.dataset.i)))});
 try{$$('#sD .tabsx button').forEach((b,k)=>b.addEventListener('click',()=>{stop($('#sD'));setTab(k)}))}catch(e){}
 const TOUR={sA:1,sB:1,sC:1,sD:1};

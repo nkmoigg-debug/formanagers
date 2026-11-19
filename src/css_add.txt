@@ -85,3 +85,5 @@
 .sit li i{flex:none;width:2.2u;height:2.2u;border-radius:50%;background:var(--green);color:#111214;font-style:normal;font-weight:800;font-size:1.05u;display:grid;place-items:center}.m .sit li i{width:6u;height:6u;font-size:3u}
 .sit li span{font-size:1.12u;line-height:1.35}.m .sit li span{font-size:3.3u}
 .sit .nt{margin-top:auto;background:var(--yellow);border-radius:1.2u;padding:1u 1.2u;font-size:1u;line-height:1.35;font-weight:500}.m .sit .nt{border-radius:3u;padding:2.6u 3u;font-size:3u}
+
+.pin.nxt{animation:nxtp 1.3s ease-in-out infinite}@keyframes nxtp{0%,100%{box-shadow:0 0 0 0 rgba(20,208,126,.55)}50%{box-shadow:0 0 0 .9u rgba(20,208,126,0)}}
